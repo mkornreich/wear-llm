@@ -191,7 +191,7 @@ export default function App() {
         {status !== 'ready' ? (
           <View style={styles.center}>
             {(status === 'init' || status === 'starting') && (
-              <ActivityIndicator size="small" color="#4da3ff" />
+              <ActivityIndicator size="small" color={C.accent} />
             )}
             <Text style={styles.status}>{statusMsg}</Text>
           </View>
@@ -220,7 +220,7 @@ export default function App() {
                   </Text>
                 ) : (
                   <View style={styles.thinkingRow}>
-                    <ActivityIndicator size="small" color="#4da3ff" />
+                    <ActivityIndicator size="small" color={C.accent} />
                     <Text style={styles.thinkingText}>Thinking…</Text>
                   </View>
                 )}
@@ -254,22 +254,63 @@ export default function App() {
   );
 }
 
+/**
+ * Apple-inspired dark palette, matching the design tokens from the scrapefrontend project
+ * (Apple.com / SF Pro design language). SF Pro isn't available on Android, so we use the
+ * system font with Apple's color, pill, and tight-letter-spacing treatment.
+ */
+const C = {
+  bg: '#000000',
+  surface: '#1c1c1e',
+  surface2: '#2c2c2e',
+  text: '#f5f5f7',
+  text2: '#a1a1a6',
+  text3: '#8e8e93',
+  accent: '#2997ff',
+  accentBtn: '#0a84ff',
+  onStrong: '#ffffff',
+  danger: '#ff6961',
+};
+
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: '#000'},
+  root: {flex: 1, backgroundColor: C.bg},
   safe: {flex: 1, alignItems: 'stretch', justifyContent: 'space-between'},
-  title: {color: '#4da3ff', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 2},
+  title: {
+    color: C.text,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    marginBottom: 3,
+  },
   center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  status: {color: '#bbb', fontSize: 11, textAlign: 'center', marginTop: 8, lineHeight: 15},
+  status: {color: C.text2, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 16, letterSpacing: -0.1},
   chat: {flex: 1, width: '100%'},
   chatContent: {paddingVertical: 4, paddingBottom: 10},
-  hint: {color: '#777', fontSize: 11, textAlign: 'center', marginTop: 20},
-  userBubble: {backgroundColor: '#1e3a5f', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, marginVertical: 3, alignSelf: 'flex-end', maxWidth: '88%'},
-  botBubble: {backgroundColor: '#1c1c1e', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, marginVertical: 3, alignSelf: 'flex-start', maxWidth: '92%'},
-  userText: {color: '#cfe4ff', fontSize: 12, lineHeight: 16},
-  botText: {color: '#eaeaea', fontSize: 12, lineHeight: 17, flexShrink: 1},
+  hint: {color: C.text3, fontSize: 12, textAlign: 'center', marginTop: 22, letterSpacing: -0.1},
+  userBubble: {
+    backgroundColor: C.accentBtn,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginVertical: 3,
+    alignSelf: 'flex-end',
+    maxWidth: '86%',
+  },
+  botBubble: {
+    backgroundColor: C.surface2,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginVertical: 3,
+    alignSelf: 'flex-start',
+    maxWidth: '90%',
+  },
+  userText: {color: C.onStrong, fontSize: 13, lineHeight: 17, letterSpacing: -0.1},
+  botText: {color: C.text, fontSize: 13, lineHeight: 18, letterSpacing: -0.1, flexShrink: 1},
   thinkingRow: {flexDirection: 'row', alignItems: 'center'},
-  thinkingText: {color: '#9ac4ff', fontSize: 12, marginLeft: 8, fontStyle: 'italic'},
-  caret: {color: '#4da3ff', fontSize: 12},
+  thinkingText: {color: C.text2, fontSize: 13, marginLeft: 8},
+  caret: {color: C.accent, fontSize: 13},
   // Bottom control row, centered so it stays clear of the round bezel.
   controls: {
     flexDirection: 'row',
@@ -279,21 +320,21 @@ const styles = StyleSheet.create({
     marginBottom: INSET * 0.5,
   },
   clearBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#2a2a2c',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
-  clearText: {color: '#ff8a80', fontSize: 15, fontWeight: '700', lineHeight: 18},
+  clearText: {color: C.text2, fontSize: 15, fontWeight: '500', lineHeight: 18},
   mic: {
-    backgroundColor: '#0a84ff',
-    borderRadius: 22,
-    paddingVertical: 7,
-    paddingHorizontal: 20,
+    backgroundColor: C.accentBtn,
+    borderRadius: 980,
+    paddingVertical: 9,
+    paddingHorizontal: 22,
   },
-  micDisabled: {backgroundColor: '#333'},
-  micText: {color: '#fff', fontSize: 12, fontWeight: '600'},
+  micDisabled: {backgroundColor: C.surface2},
+  micText: {color: C.onStrong, fontSize: 13, fontWeight: '600', letterSpacing: -0.2},
 });

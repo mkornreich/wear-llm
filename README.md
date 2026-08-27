@@ -21,7 +21,7 @@ Verified working on a **Google Pixel Watch 3** (Wear OS, Android 14).
   </tr>
 </table>
 
-<sub>Every screenshot is from a Pixel Watch 3 — the LLM runs on the watch itself, no phone or cloud. "Why is the sky blue?" answered by SmolLM2-360M on-device.</sub>
+<sub>Every screenshot is from a Pixel Watch 3 — the LLM runs on the watch itself, no phone or cloud. Answered by SmolLM2-360M on-device.</sub>
 
 ## How it works
 
