@@ -10,6 +10,19 @@ Verified working on a **Google Pixel Watch 3** (Wear OS, Android 14).
 | "What is the capital of Japan" | "The capital of Japan is Tokyo." |
 | "What is the tallest mountain on Earth?" | "…Mount Everest, at ~8,848.85 meters." |
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/01-ready.png" width="190" alt="Ready screen"><br><sub><b>Ready</b></sub></td>
+    <td align="center"><img src="screenshots/02-voice.png" width="190" alt="System voice dictation"><br><sub><b>Voice input</b></sub></td>
+    <td align="center"><img src="screenshots/03-thinking.png" width="190" alt="Thinking indicator"><br><sub><b>Thinking…</b></sub></td>
+    <td align="center"><img src="screenshots/04-answer.png" width="190" alt="Streamed on-watch answer"><br><sub><b>On-watch answer</b></sub></td>
+  </tr>
+</table>
+
+<sub>Every screenshot is from a Pixel Watch 3 — the LLM runs on the watch itself, no phone or cloud. "Why is the sky blue?" answered by SmolLM2-360M on-device.</sub>
+
 ## How it works
 
 The Pixel Watch 3 runs a **fully 32-bit userspace** (`armeabi-v7a` only, ~0.5 GB free RAM).
