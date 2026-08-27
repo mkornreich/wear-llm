@@ -68,9 +68,6 @@ class SpeechModule(private val reactContext: ReactApplicationContext) :
     try {
       val intent =
           Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            // WEB_SEARCH = short-query model: the recognizer returns as soon as you stop
-            // talking, with no "review & send" compose step (that's the FREE_FORM/dictation
-            // model). This is what makes voice auto-submit hands-free on Wear.
             // FREE_FORM (dictation) — lets you see and correct the transcript before sending,
             // which is the accurate path given the send tap is unavoidable here anyway.
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
