@@ -66,11 +66,16 @@ class VoskModule(private val reactContext: ReactApplicationContext) :
     promise.resolve(modelZip().absolutePath)
   }
 
-  /** Unzip the provisioned model into internal storage on first use. */
+  /** Unzip the provisioned model into internal storage on first use (or when the zip changes). */
   private fun ensureModel(): File {
     val dir = modelDir()
-    if (File(dir, "am").exists()) return dir
     val zip = modelZip()
+    val marker = File(dir, ".provisioned")
+    val tag = if (zip.exists()) zip.length().toString() else ""
+    // Already unpacked and matches the current zip → use it.
+    if (File(dir, "am").exists() && (tag.isEmpty() || (marker.exists() && marker.readText() == tag))) {
+      return dir
+    }
     if (!zip.exists()) throw IllegalStateException("Vosk model not provisioned at ${zip.absolutePath}")
     val tmp = File(reactContext.filesDir, "vosk-unzip-tmp")
     tmp.deleteRecursively()
@@ -97,6 +102,7 @@ class VoskModule(private val reactContext: ReactApplicationContext) :
     dir.deleteRecursively()
     if (!top.renameTo(dir)) top.copyRecursively(dir, overwrite = true)
     tmp.deleteRecursively()
+    File(dir, ".provisioned").writeText(tag)
     return dir
   }
 

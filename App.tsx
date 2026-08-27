@@ -12,7 +12,9 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Easing,
   NativeEventEmitter,
   NativeModules,
   PermissionsAndroid,
@@ -52,6 +54,25 @@ export default function App() {
   const [livePartial, setLivePartial] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const isListeningRef = useRef(false);
+  const activeXhrRef = useRef<XMLHttpRequest | null>(null);
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  // Breathing pulse on the mic while listening, so it's obviously live.
+  useEffect(() => {
+    if (!listening) {
+      pulse.stopAnimation();
+      pulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true}),
+        Animated.timing(pulse, {toValue: 0, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true}),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [listening, pulse]);
 
   // Blink a caret while the model is generating, so it's obvious it's working.
   useEffect(() => {
@@ -113,6 +134,7 @@ export default function App() {
           cache_prompt: true,
         });
         const xhr = new XMLHttpRequest();
+        activeXhrRef.current = xhr;
         xhr.open('POST', `${BASE}/v1/chat/completions`);
         xhr.setRequestHeader('Content-Type', 'application/json');
         let seen = 0;
@@ -139,6 +161,7 @@ export default function App() {
         xhr.onprogress = flush;
         xhr.onload = () => {
           flush();
+          activeXhrRef.current = null;
           const answer = acc.trim();
           setMessages((m) => [...m, {role: 'assistant', content: answer || '…'}]);
           setPartial('');
@@ -150,7 +173,13 @@ export default function App() {
           }
           resolve();
         };
+        // Aborted by the Clear button while generating — just unwind quietly.
+        xhr.onabort = () => {
+          activeXhrRef.current = null;
+          resolve();
+        };
         xhr.onerror = () => {
+          activeXhrRef.current = null;
           setMessages((m) => [...m, {role: 'assistant', content: '(error reaching model)'}]);
           setPartial('');
           setThinking(false);
@@ -203,6 +232,10 @@ export default function App() {
 
   const onClear = useCallback(() => {
     Tts?.stop();
+    // Abort an in-progress answer if the model is still generating.
+    activeXhrRef.current?.abort();
+    activeXhrRef.current = null;
+    setThinking(false);
     setMessages([]);
     setPartial('');
   }, []);
@@ -223,12 +256,29 @@ export default function App() {
           </View>
         ) : listening ? (
           <View style={styles.center}>
-            <View style={styles.listenDot}>
-              <Text style={styles.listenDotIcon}>🎤</Text>
+            <View style={styles.listenDotWrap}>
+              <Animated.View
+                style={[
+                  styles.listenHalo,
+                  {
+                    opacity: pulse.interpolate({inputRange: [0, 1], outputRange: [0.4, 0]}),
+                    transform: [
+                      {scale: pulse.interpolate({inputRange: [0, 1], outputRange: [1, 1.9]})},
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.listenDot,
+                  {transform: [{scale: pulse.interpolate({inputRange: [0, 1], outputRange: [1, 1.12]})}]},
+                ]}>
+                <Text style={styles.listenDotIcon}>🎤</Text>
+              </Animated.View>
             </View>
             <Text style={styles.listenLabel}>Listening…</Text>
             <Text style={styles.listenPartial} numberOfLines={3}>
-              {livePartial || 'Ask me anything'}
+              {livePartial || 'Say your question…'}
             </Text>
           </View>
         ) : (
@@ -272,12 +322,9 @@ export default function App() {
             </TouchableOpacity>
           ) : (
             <>
-              {messages.length > 0 && (
-                <TouchableOpacity
-                  style={[styles.clearBtn, thinking && styles.micDisabled]}
-                  onPress={onClear}
-                  disabled={thinking}
-                  activeOpacity={0.7}>
+              {(messages.length > 0 || thinking) && (
+                // Always tappable — even mid-generation it aborts the answer and clears.
+                <TouchableOpacity style={styles.clearBtn} onPress={onClear} activeOpacity={0.7}>
                   <Text style={styles.clearText}>✕</Text>
                 </TouchableOpacity>
               )}
@@ -354,6 +401,14 @@ const styles = StyleSheet.create({
   thinkingText: {color: C.text2, fontSize: 13, marginLeft: 8},
   caret: {color: C.accent, fontSize: 13},
   // Live listening view.
+  listenDotWrap: {width: 72, height: 72, alignItems: 'center', justifyContent: 'center', marginBottom: 12},
+  listenHalo: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: C.accentBtn,
+  },
   listenDot: {
     width: 56,
     height: 56,
@@ -361,7 +416,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.accentBtn,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
   listenDotIcon: {fontSize: 24},
   listenLabel: {color: C.accent, fontSize: 14, fontWeight: '600', letterSpacing: -0.2},
