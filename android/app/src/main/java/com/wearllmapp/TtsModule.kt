@@ -29,6 +29,14 @@ class TtsModule(reactContext: ReactApplicationContext) :
     t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "wearllm")
   }
 
+  /** Queue a chunk after whatever is already speaking (for streaming answers sentence-by-sentence). */
+  @ReactMethod
+  fun speakAdd(text: String) {
+    val t = tts ?: return
+    if (!ready || text.isBlank()) return
+    t.speak(text, TextToSpeech.QUEUE_ADD, null, "wearllm-${text.hashCode()}")
+  }
+
   @ReactMethod
   fun stop() {
     tts?.stop()

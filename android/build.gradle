@@ -1,7 +1,7 @@
 buildscript {
     ext {
         buildToolsVersion = "37.0.0"
-        minSdkVersion = 24
+        minSdkVersion = 26
         // SDK Platform 37 is not published yet (only build-tools 37 exists); compile against 36.
         compileSdkVersion = 36
         targetSdkVersion = 36

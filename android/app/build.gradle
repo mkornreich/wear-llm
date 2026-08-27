@@ -84,6 +84,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Only package armeabi-v7a — the watch's ABI. Critical with GeckoView, whose AAR
+        // also carries arm64-v8a + x86_64 engines (~230 MB); this keeps the APK to armv7 only.
+        ndk {
+            abiFilters "armeabi-v7a"
+        }
     }
     // Extract native libs to disk (nativeLibraryDir) so we can exec the bundled
     // llama.cpp server binary (jniLibs/armeabi-v7a/libllamaserver.so).
@@ -124,6 +129,16 @@ dependencies {
     }
     // JNA's Android @aar variant bundles the native jnidispatch libs (incl. armeabi-v7a).
     implementation("net.java.dev.jna:jna:5.13.0@aar")
+
+    // Phone-bridge (Node/MessageClient) — check_phone_connection tool. Pure Java, armeabi-v7a-safe.
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    // Open a URL on the paired phone (RemoteActivityHelper) — open_url / web_search hand-off.
+    implementation("androidx.wear:wear-remote-interactions:1.1.0")
+    // Watch-face complications — expose assistant data (steps, HR, weather, battery, next event).
+    implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1")
+    // On-device health & fitness (heart rate, steps, exercise) — Health Services tools. Pure Kotlin.
+    implementation("androidx.health:health-services-client:1.1.0-alpha05")
+    implementation("com.google.guava:guava:33.0.0-android")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

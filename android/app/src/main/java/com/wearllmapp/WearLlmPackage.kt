@@ -12,6 +12,7 @@ class WearLlmPackage : ReactPackage {
           SpeechModule(reactContext),
           VoskModule(reactContext),
           TtsModule(reactContext),
+          ToolsModule(reactContext),
       )
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =

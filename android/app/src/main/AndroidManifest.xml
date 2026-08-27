@@ -1,18 +1,94 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Health Services declares minSdk 30; the app's minSdk is 26 and it runs only on the API-34
+         watch, so allow it. (The watchface libs are minSdk 26, satisfied by the bump above.) -->
+    <uses-sdk tools:overrideLibrary="androidx.health.services.client" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- On-device Vosk speech recognition records the mic. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Function-calling tools: contacts (read/create), calendar (read/create), weather (coarse location). -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Dismiss/snooze alarms in the system clock. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Sensor, health, notification & haptic tools. -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Count media on the watch (photos / music / videos). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Health Services exercise tracking (foreground service of type health). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- Change system settings (brightness, screen timeout, font scale, 24h clock). Special
+         access: the user must toggle "Modify system settings" on for this app once. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
     <!-- Marks this as a Wear OS app so it appears in the watch launcher. -->
     <uses-feature android:name="android.hardware.type.watch" />
 
-    <!-- Android 11+ package visibility: see the Text-To-Speech service. -->
+    <!-- Android 11+ package visibility. -->
     <queries>
+        <!-- Text-To-Speech service. -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- Function-calling: hand off timers/alarms to the system clock app. -->
+        <intent>
+            <action android:name="android.intent.action.SET_TIMER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM" />
+        </intent>
+        <!-- Function-calling: enumerate launchable apps for open_app (no QUERY_ALL_PACKAGES). -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Function-calling: compose_email (mailto), compose_sms (smsto), dial (tel), map (geo). -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.WEB_SEARCH" />
+        </intent>
+        <!-- See installed browser apps (Samsung Internet, WristWeb, …) for web_search hand-off. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- The apps these tools hand off to (Android 11+ package visibility). -->
+        <package android:name="com.google.android.apps.wearable.settings" />
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.google.android.dialer" />
+        <package android:name="com.google.android.apps.messaging" />
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.google.android.wearable.frameworkpackagestubs" />
     </queries>
 
     <application
@@ -43,5 +119,60 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Bundled WebView browser for the web_search tool (Wear ships no browser app). -->
+      <activity
+          android:name=".BrowserActivity"
+          android:label="Web"
+          android:exported="false" />
+
+      <!-- Enables MediaSessionManager access for the now_playing tool (granted via adb; see MediaListener). -->
+      <service
+          android:name=".MediaListener"
+          android:label="WearLLM media"
+          android:exported="true"
+          android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+          <intent-filter>
+              <action android:name="android.service.notification.NotificationListenerService" />
+          </intent-filter>
+      </service>
+
+      <!-- Watch-face complications: add them to your watch face from its complication picker. -->
+      <service android:name=".AssistantComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Ask" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="0" />
+      </service>
+      <service android:name=".StepsComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Steps" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="RANGED_VALUE,SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="600" />
+      </service>
+      <service android:name=".HeartRateComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Heart rate" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="600" />
+      </service>
+      <service android:name=".WeatherComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Weather" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="1800" />
+      </service>
+      <service android:name=".BatteryTempComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Battery temp" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="600" />
+      </service>
+      <service android:name=".NextEventComplication" android:exported="true" android:icon="@mipmap/ic_launcher"
+          android:label="WearLLM: Next event" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+          <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+          <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+          <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="900" />
+      </service>
     </application>
 </manifest>
