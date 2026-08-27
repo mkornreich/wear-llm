@@ -64,7 +64,6 @@ export default function App() {
   const [partial, setPartial] = useState('');
   const [listening, setListening] = useState(false);
   const [thinking, setThinking] = useState(false);
-  const [caretOn, setCaretOn] = useState(true);
   const [livePartial, setLivePartial] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const isListeningRef = useRef(false);
@@ -87,13 +86,6 @@ export default function App() {
     loop.start();
     return () => loop.stop();
   }, [listening, pulse]);
-
-  // Blink a caret while the model is generating, so it's obvious it's working.
-  useEffect(() => {
-    if (!thinking) return;
-    const id = setInterval(() => setCaretOn((c) => !c), 450);
-    return () => clearInterval(id);
-  }, [thinking]);
 
   // Live transcription: show words as Vosk recognizes them.
   useEffect(() => {
@@ -291,18 +283,12 @@ export default function App() {
               </View>
             ))}
             {thinking && (
-              <View style={styles.botBubble}>
-                {partial.trim() ? (
-                  <Text style={styles.botText}>
-                    {partial.replace(/\s+$/, '')}
-                    <Text style={styles.caret}>{caretOn ? '▋' : ' '}</Text>
-                  </Text>
-                ) : (
-                  <View style={styles.thinkingRow}>
-                    <ActivityIndicator size="small" color={C.accent} />
-                    <Text style={styles.thinkingText}>Thinking…</Text>
-                  </View>
-                )}
+              <View style={[styles.botBubble, styles.thinkingBubble]}>
+                {/* Blue spinner stays visible the whole time it's thinking/streaming. */}
+                <ActivityIndicator size="small" color={C.accent} style={styles.thinkingSpinner} />
+                <Text style={styles.botText}>
+                  {partial.trim() ? partial.replace(/\s+$/, '') : 'Thinking…'}
+                </Text>
               </View>
             )}
           </ScrollView>
@@ -326,7 +312,7 @@ export default function App() {
                 onPress={onSpeak}
                 disabled={disabled}
                 activeOpacity={0.7}>
-                {thinking ? <Text style={styles.micDots}>…</Text> : <MicIcon size={34} />}
+                <MicIcon size={34} />
               </TouchableOpacity>
             </>
           )}
@@ -384,9 +370,8 @@ const styles = StyleSheet.create({
   },
   userText: {color: C.text, fontSize: 13, lineHeight: 18},
   botText: {color: C.text, fontSize: 13, lineHeight: 18, flexShrink: 1},
-  thinkingRow: {flexDirection: 'row', alignItems: 'center'},
-  thinkingText: {color: C.text2, fontSize: 13, marginLeft: 8},
-  caret: {color: C.text2, fontSize: 13},
+  thinkingBubble: {flexDirection: 'row', alignItems: 'flex-start'},
+  thinkingSpinner: {marginRight: 8, marginTop: 1},
   // Live listening view (Vosk path) — big grey mic like the voice page.
   listenDotWrap: {width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: 14},
   listenHalo: {position: 'absolute', width: 76, height: 76, borderRadius: 38, backgroundColor: C.surface2},
@@ -429,5 +414,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   micDisabled: {opacity: 0.45},
-  micDots: {color: C.onStrong, fontSize: 28, lineHeight: 30},
 });
