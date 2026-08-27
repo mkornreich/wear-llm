@@ -36,18 +36,22 @@ MediaPipe) is **arm64-only** and won't build for it. So instead:
    [`native/build-llama-server.sh`](native/build-llama-server.sh).
 2. On launch, a **native module** (`LlamaServerModule.kt`) execs that binary (extracted to
    the app's `nativeLibraryDir`) so it listens on `127.0.0.1:8080` **on the watch**.
-3. **Voice** uses the system Wear dictation UI via the `ACTION_RECOGNIZE_SPEECH` intent
-   (`SpeechModule.kt`) — the most reliable path on Wear OS (this watch has no bindable
-   `RecognitionService`, so the in-app `SpeechRecognizer` API isn't available), and it needs
-   no `RECORD_AUDIO` permission in our app. It **auto-submits when you stop talking**.
+3. **Voice** is fully on-device via **[Vosk](https://alphacephei.com/vosk/)** (`VoskModule.kt`),
+   an offline Kaldi recognizer. It streams a live transcription and **auto-submits the moment
+   you stop talking** (silence endpointing) — no button. (Wear's system dictation was rejected
+   because it always requires a "send" tap, and the watch has no `RecognitionService` for the
+   in-app `SpeechRecognizer` API. On-device whisper.cpp was tried too but is ~17× too slow on
+   this 32-bit CPU.)
 4. The **RN UI** (`App.tsx`) sends the transcript to the local server and streams the
    answer back token-by-token over plain HTTP, then **speaks it aloud** through the watch
    speaker via the system Text-To-Speech engine (`TtsModule.kt`).
 
-**Model:** [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
-(Q4_K_M, ~260 MB, Apache-2.0). It's tiny, so expect short, simple answers and the occasional
-mistake. Throughput on the watch is ~1–4 tokens/sec depending on thermal state (the first
-answer after launch is slower while the model pages in from storage).
+**Models (both on-device, ~300 MB total):**
+- LLM — [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
+  (Q4_K_M, ~260 MB, Apache-2.0). Tiny, so expect short, simple answers and the occasional
+  mistake; throughput is ~1–4 tokens/sec depending on thermal state.
+- STT — [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models) (~40 MB, Apache-2.0),
+  real-time offline English recognition.
 
 ## Toolchain
 
@@ -105,16 +109,18 @@ For UI iteration you can also run a debug build with Metro over USB:
 
 ## Layout
 
-- `App.tsx` — the watch UI (round-screen layout, streaming chat).
-- `android/app/src/main/java/com/wearllmapp/LlamaServerModule.kt` — spawns/monitors the on-device server.
-- `android/app/src/main/java/com/wearllmapp/SpeechModule.kt` — system voice-input intent.
+- `App.tsx` — the watch UI (round-screen layout, live listening view, streaming chat).
+- `android/app/src/main/java/com/wearllmapp/LlamaServerModule.kt` — spawns/monitors the on-device LLM server.
+- `android/app/src/main/java/com/wearllmapp/VoskModule.kt` — on-device speech recognition (hands-free).
+- `android/app/src/main/java/com/wearllmapp/TtsModule.kt` — speaks the answer aloud.
 - `android/app/src/main/jniLibs/armeabi-v7a/libllamaserver.so` — the 32-bit llama.cpp server.
 - `native/build-llama-server.sh` — reproduces that binary.
-- `scripts/` — provision the model, build-and-run helpers.
+- `scripts/` — provision the models, build-and-run helpers.
 
 ## License
 
 MIT — see [LICENSE](LICENSE). Bundled components keep their own licenses:
-[llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT) and the
+[llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT),
+[Vosk](https://github.com/alphacep/vosk-api) (Apache-2.0), the
 [SmolLM2-360M-Instruct](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)
-model (Apache-2.0).
+LLM (Apache-2.0), and the [Vosk small English](https://alphacephei.com/vosk/models) model (Apache-2.0).
