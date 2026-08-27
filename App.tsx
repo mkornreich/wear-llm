@@ -25,7 +25,7 @@ import {
   View,
 } from 'react-native';
 
-const {LlamaServer, Vosk, Tts} = NativeModules;
+const {LlamaServer, Speech, Vosk, Tts} = NativeModules;
 
 const PORT = 8080;
 const N_THREADS = 3;
@@ -192,22 +192,10 @@ export default function App() {
 
   const onSpeak = useCallback(async () => {
     if (status !== 'ready' || listening || thinking) return;
-    if (isListeningRef.current) return;
     try {
       Tts?.stop();
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) return;
-
-      setLivePartial('');
-      setListening(true);
-      isListeningRef.current = true;
-      // Resolves the instant you stop talking (Vosk silence endpointing).
-      const text: string = await Vosk.listen();
-      setListening(false);
-      isListeningRef.current = false;
-      setLivePartial('');
+      // Built-in device speech recognition (the system dictation UI).
+      const text: string = await Speech.listen('Ask me anything');
       if (!text?.trim()) return;
 
       const next = [...messages, {role: 'user' as const, content: text.trim()}];
@@ -216,9 +204,6 @@ export default function App() {
       scrollDown();
       await streamAnswer(next);
     } catch (e) {
-      setListening(false);
-      isListeningRef.current = false;
-      setLivePartial('');
       setThinking(false);
     }
   }, [status, listening, thinking, messages, streamAnswer, scrollDown]);
