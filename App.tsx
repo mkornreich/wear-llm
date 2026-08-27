@@ -11,6 +11,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Dimensions,
   NativeModules,
   ScrollView,
@@ -54,6 +55,17 @@ export default function App() {
     const id = setInterval(() => setCaretOn((c) => !c), 450);
     return () => clearInterval(id);
   }, [thinking]);
+
+  // Whenever we return to the foreground (e.g. after backing out of the dictation
+  // screen because it didn't catch anything), drop back to a clean, usable main page.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') {
+        setListening(false);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // --- Boot: ensure model is present, then start the on-watch server ---
   useEffect(() => {
