@@ -109,3 +109,10 @@ For UI iteration you can also run a debug build with Metro over USB:
 - `android/app/src/main/jniLibs/armeabi-v7a/libllamaserver.so` — the 32-bit llama.cpp server.
 - `native/build-llama-server.sh` — reproduces that binary.
 - `scripts/` — provision the model, build-and-run helpers.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Bundled components keep their own licenses:
+[llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT) and the
+[SmolLM2-360M-Instruct](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)
+model (Apache-2.0).
