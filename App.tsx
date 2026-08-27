@@ -1,9 +1,10 @@
 /**
  * WearLLMApp — a fully on-watch local LLM assistant.
  *
- *  Voice  : system dictation intent (native Speech module)
+ *  Voice  : system dictation (native Speech module) — auto-submits when you stop talking
  *  LLM    : llama.cpp server running on the watch itself (native LlamaServer module),
  *           SmolLM2-360M-Instruct (Q4_K_M) over 127.0.0.1, streamed token-by-token.
+ *  Speech : the answer is spoken aloud through the watch speaker (native Tts module).
  *
  * Nothing leaves the watch — no phone, no laptop, no cloud.
  */
@@ -19,7 +20,7 @@ import {
   View,
 } from 'react-native';
 
-const {LlamaServer, Speech} = NativeModules;
+const {LlamaServer, Speech, Tts} = NativeModules;
 
 const PORT = 8080;
 const N_THREADS = 3;
@@ -119,9 +120,15 @@ export default function App() {
         xhr.onprogress = flush;
         xhr.onload = () => {
           flush();
-          setMessages((m) => [...m, {role: 'assistant', content: acc.trim() || '…'}]);
+          const answer = acc.trim();
+          setMessages((m) => [...m, {role: 'assistant', content: answer || '…'}]);
           setPartial('');
           setThinking(false);
+          if (answer) {
+            try {
+              Tts?.speak(answer);
+            } catch {}
+          }
           resolve();
         };
         xhr.onerror = () => {
@@ -138,10 +145,13 @@ export default function App() {
   const onSpeak = useCallback(async () => {
     if (status !== 'ready' || listening || thinking) return;
     try {
+      Tts?.stop();
       setListening(true);
+      // Opens the dictation UI; resolves with the transcript as soon as you stop talking.
       const text: string = await Speech.listen('Ask me anything');
       setListening(false);
       if (!text?.trim()) return;
+
       const next = [...messages, {role: 'user' as const, content: text.trim()}];
       setMessages(next);
       setThinking(true);
@@ -173,19 +183,21 @@ export default function App() {
             style={styles.chat}
             contentContainerStyle={styles.chatContent}
             onContentSizeChange={scrollDown}>
-            {messages.length === 0 && !thinking && (
+            {messages.length === 0 && !thinking && !listening && (
               <Text style={styles.hint}>Tap the mic and ask a question.</Text>
             )}
             {messages.map((m, i) => (
               <View key={i} style={m.role === 'user' ? styles.userBubble : styles.botBubble}>
-                <Text style={m.role === 'user' ? styles.userText : styles.botText}>{m.content}</Text>
+                <Text style={m.role === 'user' ? styles.userText : styles.botText}>
+                  {m.content}
+                </Text>
               </View>
             ))}
             {thinking && (
               <View style={styles.botBubble}>
-                {partial ? (
+                {partial.trim() ? (
                   <Text style={styles.botText}>
-                    {partial}
+                    {partial.replace(/\s+$/, '')}
                     <Text style={styles.caret}>{caretOn ? '▋' : ' '}</Text>
                   </Text>
                 ) : (

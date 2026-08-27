@@ -11,11 +11,15 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
 /**
- * Voice input using the system speech-recognition UI (ACTION_RECOGNIZE_SPEECH).
+ * Voice input via the system speech-recognition UI (ACTION_RECOGNIZE_SPEECH).
  *
- * On Wear OS this is the recommended, most reliable path: it delegates the mic and recognition
- * to the guaranteed-present system component (Google), renders the native round-screen dictation
- * UI, and needs no RECORD_AUDIO permission in our app.
+ * On this hardware (Pixel Watch 3) there is no bindable RecognitionService, so the in-app
+ * SpeechRecognizer API is unavailable — the system dictation activity is the only path, and
+ * it's also the most reliable one on Wear OS: it owns the mic (no RECORD_AUDIO needed in our
+ * app) and renders the native round-screen dictation UI.
+ *
+ * It **auto-submits when you stop talking**: the recognizer detects trailing silence, returns
+ * the transcript in EXTRA_RESULTS, and `listen()` resolves — the app then answers automatically.
  */
 class SpeechModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -35,8 +39,7 @@ class SpeechModule(private val reactContext: ReactApplicationContext) :
           val p = pending ?: return
           pending = null
           if (resultCode == Activity.RESULT_OK && data != null) {
-            val results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            val text = results?.firstOrNull()
+            val text = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (text != null) p.resolve(text) else p.reject("no_match", "No speech recognized")
           } else {
             p.reject("cancelled", "Speech input cancelled")
@@ -63,10 +66,11 @@ class SpeechModule(private val reactContext: ReactApplicationContext) :
     }
     pending = promise
     try {
-      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
-      }
+      val intent =
+          Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+          }
       activity.startActivityForResult(intent, REQ)
     } catch (e: Exception) {
       pending = null

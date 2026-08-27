@@ -37,10 +37,12 @@ MediaPipe) is **arm64-only** and won't build for it. So instead:
 2. On launch, a **native module** (`LlamaServerModule.kt`) execs that binary (extracted to
    the app's `nativeLibraryDir`) so it listens on `127.0.0.1:8080` **on the watch**.
 3. **Voice** uses the system Wear dictation UI via the `ACTION_RECOGNIZE_SPEECH` intent
-   (`SpeechModule.kt`) — the most reliable path on Wear OS, and it needs no `RECORD_AUDIO`
-   permission in our app.
+   (`SpeechModule.kt`) — the most reliable path on Wear OS (this watch has no bindable
+   `RecognitionService`, so the in-app `SpeechRecognizer` API isn't available), and it needs
+   no `RECORD_AUDIO` permission in our app. It **auto-submits when you stop talking**.
 4. The **RN UI** (`App.tsx`) sends the transcript to the local server and streams the
-   answer back token-by-token over plain HTTP.
+   answer back token-by-token over plain HTTP, then **speaks it aloud** through the watch
+   speaker via the system Text-To-Speech engine (`TtsModule.kt`).
 
 **Model:** [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
 (Q4_K_M, ~260 MB, Apache-2.0). It's tiny, so expect short, simple answers and the occasional
