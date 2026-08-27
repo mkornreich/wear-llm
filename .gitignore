@@ -1,0 +1,5 @@
+# Pre-upgrade RN 0.72 project, kept locally as a backup — not for publishing
+WearLLMApp_old_0.72/
+
+# Local Claude Code settings
+.claude/
