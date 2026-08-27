@@ -175,6 +175,12 @@ export default function App() {
     }
   }, [status, listening, thinking, messages, streamAnswer, scrollDown]);
 
+  const onClear = useCallback(() => {
+    Tts?.stop();
+    setMessages([]);
+    setPartial('');
+  }, []);
+
   const disabled = status !== 'ready' || listening || thinking;
 
   return (
@@ -223,13 +229,26 @@ export default function App() {
           </ScrollView>
         )}
 
-        <TouchableOpacity
-          style={[styles.mic, disabled && styles.micDisabled]}
-          onPress={onSpeak}
-          disabled={disabled}
-          activeOpacity={0.7}>
-          <Text style={styles.micText}>{listening ? '● Listening' : thinking ? '…' : '🎤 Speak'}</Text>
-        </TouchableOpacity>
+        <View style={styles.controls}>
+          {messages.length > 0 && (
+            <TouchableOpacity
+              style={[styles.clearBtn, (thinking || listening) && styles.micDisabled]}
+              onPress={onClear}
+              disabled={thinking || listening}
+              activeOpacity={0.7}>
+              <Text style={styles.clearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.mic, disabled && styles.micDisabled]}
+            onPress={onSpeak}
+            disabled={disabled}
+            activeOpacity={0.7}>
+            <Text style={styles.micText}>
+              {listening ? '● Listening' : thinking ? '…' : '🎤 Speak'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -251,14 +270,29 @@ const styles = StyleSheet.create({
   thinkingRow: {flexDirection: 'row', alignItems: 'center'},
   thinkingText: {color: '#9ac4ff', fontSize: 12, marginLeft: 8, fontStyle: 'italic'},
   caret: {color: '#4da3ff', fontSize: 12},
+  // Bottom control row, centered so it stays clear of the round bezel.
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: INSET * 0.5,
+  },
+  clearBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#2a2a2c',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  clearText: {color: '#ff8a80', fontSize: 15, fontWeight: '700', lineHeight: 18},
   mic: {
     backgroundColor: '#0a84ff',
     borderRadius: 22,
     paddingVertical: 7,
     paddingHorizontal: 20,
-    alignSelf: 'center', // compact, centered pill — keeps it clear of the round bezel
-    marginTop: 4,
-    marginBottom: INSET * 0.5,
   },
   micDisabled: {backgroundColor: '#333'},
   micText: {color: '#fff', fontSize: 12, fontWeight: '600'},
