@@ -50,8 +50,9 @@ MediaPipe) is **arm64-only** and won't build for it. So instead:
 - LLM — [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
   (Q4_K_M, ~260 MB, Apache-2.0). Tiny, so expect short, simple answers and the occasional
   mistake; throughput is ~1–4 tokens/sec depending on thermal state.
-- STT — [vosk-model-en-us-0.22-lgraph](https://alphacephei.com/vosk/models) (~128 MB, Apache-2.0),
-  offline English recognition. (The 40 MB `small` model also works if you want less RAM/faster load.)
+- STT — [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models) (~40 MB, Apache-2.0),
+  real-time offline English recognition. (The larger lgraph model is more accurate but too slow
+  to keep up with real-time audio on this 32-bit CPU.)
 
 ## Toolchain
 

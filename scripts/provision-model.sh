@@ -16,7 +16,7 @@ ADB=(adb); [ -n "$SERIAL" ] && ADB=(adb -s "$SERIAL")
 FILES=/sdcard/Android/data/com.wearllmapp/files
 
 LLM_GGUF="${LLM_GGUF:-SmolLM2-360M-Instruct-Q4_K_M.gguf}"
-VOSK_ZIP="${VOSK_ZIP:-vosk-lgraph.zip}"
+VOSK_ZIP="${VOSK_ZIP:-vosk-small-en.zip}"
 
 "${ADB[@]}" shell "mkdir -p $FILES"
 
@@ -36,8 +36,8 @@ if [ -f "$VOSK_ZIP" ]; then
   "${ADB[@]}" push "$VOSK_ZIP" "$FILES/vosk-model.zip"
 else
   echo "!! Vosk model zip '$VOSK_ZIP' not found. Download it with:"
-  echo '   curl -L -o vosk-lgraph.zip https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip'
-  echo '   (or the smaller/faster vosk-model-small-en-us-0.15.zip)'
+  echo '   curl -L -o vosk-small-en.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
+  echo '   (the small model is real-time on this watch; the larger lgraph model is too slow here)'
 fi
 
 echo ">> Done. Relaunch the app; it loads the LLM and unpacks the STT model on first run."

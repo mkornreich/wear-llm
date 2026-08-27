@@ -203,12 +203,14 @@ class VoskModule(private val reactContext: ReactApplicationContext) :
   }
 
   private fun stopService() {
+    val svc = speechService
+    speechService = null
     main.post {
       try {
-        speechService?.stop()
-        speechService?.shutdown()
+        // cancel() aborts immediately without finalizing a backlog of audio (stop() can lag).
+        svc?.cancel()
+        svc?.shutdown()
       } catch (_: Exception) {}
-      speechService = null
     }
   }
 
