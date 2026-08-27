@@ -53,6 +53,21 @@ function compassCardinal(deg: number): string {
   return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8];
 }
 
+// What to read aloud when a browser page loads: the top result titles for a search-results page,
+// or the title + first couple of sentences for a content page.
+function spokenPage(p: Page): string {
+  const compact = p.text.replace(/\s+/g, ' ').trim();
+  if (compact.replace(/\s/g, '').length > 120) {
+    const sentences = compact.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+    return `${p.title}. ${sentences}`.slice(0, 600);
+  }
+  if (p.links.length) {
+    const top = p.links.slice(0, 5).map((l) => l.text).filter(Boolean);
+    return `Top results: ${top.join('. ')}.`.slice(0, 600);
+  }
+  return p.title;
+}
+
 // A live compass dial — the ring rotates so N points at true north; a fixed blue arrow at the
 // top marks the direction the watch is facing.
 function CompassDial({heading}: {heading: number}) {
@@ -170,16 +185,26 @@ export default function App() {
   const closePic = useCallback(() => setPic(null), []);
 
   // In-app reader browser. `push` records the current page for the Back button.
-  const openBrowser = useCallback(async (url: string, push = false) => {
+  const openBrowser = useCallback(async (url: string, push = false, readMode: 'search' | 'page' = 'page') => {
     if (push && pageRef.current) historyRef.current.push(pageRef.current);
     setBrowserLoading(true);
     const gen = genRef.current;
     const p = await fetchPage(url);
     if (genRef.current !== gen) return;
     setBrowserLoading(false);
-    const next = p || {url, title: "Couldn't load page", text: `I couldn't open ${url}.`, links: []};
+    const base = p || {url, title: "Couldn't load page", text: `I couldn't open ${url}.`, links: []};
+    const next: Page = {...base, isSearch: readMode === 'search'};
     pageRef.current = next;
     setPage(next);
+    // Read the results / page aloud automatically.
+    try {
+      Tts?.stop();
+      const spoken =
+        readMode === 'search' && next.links.length
+          ? `Top results: ${next.links.slice(0, 5).map((l) => l.text).filter(Boolean).join('. ')}.`.slice(0, 600)
+          : spokenPage(next);
+      Tts?.speak(spoken);
+    } catch {}
   }, []);
 
   const browserBack = useCallback(() => {
@@ -339,7 +364,7 @@ export default function App() {
       if (pc?.tool === 'web_search') {
         historyRef.current = [];
         pageRef.current = null;
-        openBrowser(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(pc.query)}`, false);
+        openBrowser(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(pc.query)}`, false, 'search');
         return;
       }
       // "show me a picture of X" fetches a Creative-Commons image and displays it.
@@ -450,6 +475,19 @@ export default function App() {
                 <ActivityIndicator size="small" color={C.accent} />
                 <Text style={styles.status}>Loading…</Text>
               </View>
+            ) : page && page.isSearch ? (
+              // Search results: each is a prominent, tappable card that opens in-app.
+              <>
+                <Text style={styles.browserLinksHdr}>Results — tap to open</Text>
+                {browserLoading && <ActivityIndicator size="small" color={C.accent} style={{marginVertical: 6}} />}
+                {page.links.map((l, i) => (
+                  <TouchableOpacity key={i} style={styles.resultCard} onPress={() => openBrowser(l.href, true)} activeOpacity={0.6}>
+                    <Text style={styles.resultTitle} numberOfLines={2}>{l.text}</Text>
+                    <Text style={styles.resultHost} numberOfLines={1}>{l.href.replace(/^https?:\/\//, '').split('/')[0]}</Text>
+                  </TouchableOpacity>
+                ))}
+                {page.links.length === 0 && <Text style={styles.browserText}>No results.</Text>}
+              </>
             ) : page ? (
               <>
                 <Text style={styles.browserUrl} numberOfLines={1}>{page.url.replace(/^https?:\/\//, '')}</Text>
@@ -647,6 +685,9 @@ const styles = StyleSheet.create({
   browserText: {color: C.text2, fontSize: 12, lineHeight: 17},
   browserLinksHdr: {color: C.text3, fontSize: 10, letterSpacing: 0.6, marginTop: 14, marginBottom: 2},
   browserLink: {color: C.accent, fontSize: 12, lineHeight: 16, paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.surface2},
+  resultCard: {paddingVertical: 9, borderTopWidth: 1, borderTopColor: C.surface2},
+  resultTitle: {color: C.accent, fontSize: 13, lineHeight: 17, fontWeight: '500'},
+  resultHost: {color: C.text3, fontSize: 10, marginTop: 2},
   pic: {width: Math.round(width * 0.64), height: Math.round(width * 0.64), borderRadius: 10, backgroundColor: C.surface2},
   picCaption: {color: C.text, fontSize: 12, textAlign: 'center', marginTop: 8, maxWidth: '80%'},
   picLicense: {color: C.text3, fontSize: 10, textAlign: 'center', marginTop: 2},

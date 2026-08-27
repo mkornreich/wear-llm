@@ -1279,7 +1279,7 @@ export async function fetchPicture(
 
 // In-app reader browser: fetch a page through r.jina.ai (returns clean, small markdown —
 // KBs, not the ~1 MB of raw HTML — and renders JS pages server-side) and parse title/text/links.
-export type Page = {url: string; title: string; text: string; links: {text: string; href: string}[]};
+export type Page = {url: string; title: string; text: string; links: {text: string; href: string}[]; isSearch?: boolean};
 export async function fetchPage(url: string): Promise<Page | null> {
   const u = /^https?:\/\//i.test(url) ? url : `https://${url}`;
   try {
