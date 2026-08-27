@@ -24,8 +24,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 
 const {LlamaServer, Speech, Vosk, Tts} = NativeModules;
+
+// Material Design "mic" icon (filled, 24×24) — the same glyph the system voice page uses.
+const MIC_PATH =
+  'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 ' +
+  '2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z';
+
+function MicIcon({size = 34, color = '#fff'}: {size?: number; color?: string}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d={MIC_PATH} fill={color} />
+    </Svg>
+  );
+}
 
 const PORT = 8080;
 const N_THREADS = 3;
@@ -252,7 +266,7 @@ export default function App() {
                   styles.listenDot,
                   {transform: [{scale: pulse.interpolate({inputRange: [0, 1], outputRange: [1, 1.12]})}]},
                 ]}>
-                <Text style={styles.listenDotIcon}>🎤</Text>
+                <MicIcon size={34} />
               </Animated.View>
             </View>
             <Text style={styles.listenLabel}>Listening…</Text>
@@ -312,7 +326,7 @@ export default function App() {
                 onPress={onSpeak}
                 disabled={disabled}
                 activeOpacity={0.7}>
-                <Text style={styles.micText}>{thinking ? '…' : '🎤 Speak'}</Text>
+                {thinking ? <Text style={styles.micDots}>…</Text> : <MicIcon size={34} />}
               </TouchableOpacity>
             </>
           )}
@@ -328,38 +342,32 @@ export default function App() {
  * system font with Apple's color, pill, and tight-letter-spacing treatment.
  */
 const C = {
-  bg: '#000000',
-  surface: '#1c1c1e',
-  surface2: '#2c2c2e',
-  text: '#f5f5f7',
-  text2: '#a1a1a6',
-  text3: '#8e8e93',
-  accent: '#2997ff',
-  accentBtn: '#0a84ff',
+  bg: '#000000', // pure black, like the Wear voice page
+  surface: '#202124', // Google dark grey
+  surface2: '#2b2b2e', // circular-button / bubble grey (matches the voice-page mic)
+  surfaceHi: '#3c4043', // lighter grey (sent bubble)
+  text: '#ffffff',
+  text2: '#9aa0a6', // Google secondary grey
+  text3: '#80868b',
+  accent: '#8ab4f8', // Google blue (used sparingly, e.g. spinner)
   onStrong: '#ffffff',
-  danger: '#ff6961',
+  danger: '#f28b82', // Google red
 };
 
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: C.bg},
   safe: {flex: 1, alignItems: 'stretch', justifyContent: 'space-between'},
-  title: {
-    color: C.text,
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-    marginBottom: 3,
-  },
+  title: {color: C.text, fontSize: 15, fontWeight: '500', textAlign: 'center', marginBottom: 4},
   center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  status: {color: C.text2, fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 16, letterSpacing: -0.1},
+  status: {color: C.text2, fontSize: 13, textAlign: 'center', marginTop: 10, lineHeight: 18},
   chat: {flex: 1, width: '100%'},
   chatContent: {paddingVertical: 4, paddingBottom: 10},
-  hint: {color: C.text3, fontSize: 12, textAlign: 'center', marginTop: 22, letterSpacing: -0.1},
+  hint: {color: C.text3, fontSize: 13, textAlign: 'center', marginTop: 22},
+  // Monochrome grey bubbles (Wear/Google style).
   userBubble: {
-    backgroundColor: C.accentBtn,
-    borderRadius: 18,
-    paddingHorizontal: 12,
+    backgroundColor: C.surfaceHi,
+    borderRadius: 20,
+    paddingHorizontal: 13,
     paddingVertical: 8,
     marginVertical: 3,
     alignSelf: 'flex-end',
@@ -367,76 +375,59 @@ const styles = StyleSheet.create({
   },
   botBubble: {
     backgroundColor: C.surface2,
-    borderRadius: 18,
-    paddingHorizontal: 12,
+    borderRadius: 20,
+    paddingHorizontal: 13,
     paddingVertical: 8,
     marginVertical: 3,
     alignSelf: 'flex-start',
     maxWidth: '90%',
   },
-  userText: {color: C.onStrong, fontSize: 13, lineHeight: 17, letterSpacing: -0.1},
-  botText: {color: C.text, fontSize: 13, lineHeight: 18, letterSpacing: -0.1, flexShrink: 1},
+  userText: {color: C.text, fontSize: 13, lineHeight: 18},
+  botText: {color: C.text, fontSize: 13, lineHeight: 18, flexShrink: 1},
   thinkingRow: {flexDirection: 'row', alignItems: 'center'},
   thinkingText: {color: C.text2, fontSize: 13, marginLeft: 8},
-  caret: {color: C.accent, fontSize: 13},
-  // Live listening view.
-  listenDotWrap: {width: 72, height: 72, alignItems: 'center', justifyContent: 'center', marginBottom: 12},
-  listenHalo: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: C.accentBtn,
-  },
+  caret: {color: C.text2, fontSize: 13},
+  // Live listening view (Vosk path) — big grey mic like the voice page.
+  listenDotWrap: {width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: 14},
+  listenHalo: {position: 'absolute', width: 76, height: 76, borderRadius: 38, backgroundColor: C.surface2},
   listenDot: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: C.accentBtn,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: C.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  listenDotIcon: {fontSize: 24},
-  listenLabel: {color: C.accent, fontSize: 14, fontWeight: '600', letterSpacing: -0.2},
-  listenPartial: {
-    color: C.text,
-    fontSize: 14,
-    lineHeight: 19,
-    textAlign: 'center',
-    marginTop: 10,
-    letterSpacing: -0.1,
-  },
-  stopBtn: {
-    backgroundColor: C.surface2,
-    borderRadius: 980,
-    paddingVertical: 9,
-    paddingHorizontal: 28,
-  },
-  stopText: {color: C.text, fontSize: 13, fontWeight: '600', letterSpacing: -0.2},
-  // Bottom control row, centered so it stays clear of the round bezel.
+  listenLabel: {color: C.text, fontSize: 14, fontWeight: '500'},
+  listenPartial: {color: C.text2, fontSize: 14, lineHeight: 19, textAlign: 'center', marginTop: 10},
+  stopBtn: {backgroundColor: C.surface2, borderRadius: 980, paddingVertical: 10, paddingHorizontal: 30},
+  stopText: {color: C.text, fontSize: 13, fontWeight: '500'},
+  // Bottom controls: a big circular grey mic (like the voice page), clear to its left.
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
-    marginBottom: INSET * 0.5,
+    marginBottom: INSET * 0.3,
   },
   clearBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: C.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 16,
   },
-  clearText: {color: C.text2, fontSize: 15, fontWeight: '500', lineHeight: 18},
+  clearText: {color: C.text2, fontSize: 17, lineHeight: 20},
   mic: {
-    backgroundColor: C.accentBtn,
-    borderRadius: 980,
-    paddingVertical: 9,
-    paddingHorizontal: 22,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: C.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  micDisabled: {backgroundColor: C.surface2},
-  micText: {color: C.onStrong, fontSize: 13, fontWeight: '600', letterSpacing: -0.2},
+  micDisabled: {opacity: 0.45},
+  micDots: {color: C.onStrong, fontSize: 28, lineHeight: 30},
 });
