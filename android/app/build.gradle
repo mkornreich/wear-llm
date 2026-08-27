@@ -118,6 +118,13 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // On-device speech recognition (offline, real-time, with endpointing).
+    implementation("com.alphacephei:vosk-android:0.3.47") {
+        exclude group: "net.java.dev.jna"
+    }
+    // JNA's Android @aar variant bundles the native jnidispatch libs (incl. armeabi-v7a).
+    implementation("net.java.dev.jna:jna:5.13.0@aar")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -1,7 +1,8 @@
 /**
  * WearLLMApp — a fully on-watch local LLM assistant.
  *
- *  Voice  : system dictation (native Speech module) — auto-submits when you stop talking
+ *  Voice  : on-device Vosk recognition (native Vosk module) — streams live and auto-submits
+ *           the moment you stop talking (silence endpointing), no button.
  *  LLM    : llama.cpp server running on the watch itself (native LlamaServer module),
  *           SmolLM2-360M-Instruct (Q4_K_M) over 127.0.0.1, streamed token-by-token.
  *  Speech : the answer is spoken aloud through the watch speaker (native Tts module).
@@ -11,9 +12,10 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  AppState,
   Dimensions,
+  NativeEventEmitter,
   NativeModules,
+  PermissionsAndroid,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,7 +23,7 @@ import {
   View,
 } from 'react-native';
 
-const {LlamaServer, Speech, Tts} = NativeModules;
+const {LlamaServer, Vosk, Tts} = NativeModules;
 
 const PORT = 8080;
 const N_THREADS = 3;
@@ -47,7 +49,9 @@ export default function App() {
   const [listening, setListening] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [caretOn, setCaretOn] = useState(true);
+  const [livePartial, setLivePartial] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const isListeningRef = useRef(false);
 
   // Blink a caret while the model is generating, so it's obvious it's working.
   useEffect(() => {
@@ -56,14 +60,11 @@ export default function App() {
     return () => clearInterval(id);
   }, [thinking]);
 
-  // Whenever we return to the foreground (e.g. after backing out of the dictation
-  // screen because it didn't catch anything), drop back to a clean, usable main page.
+  // Live transcription: show words as Vosk recognizes them.
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') {
-        setListening(false);
-      }
-    });
+    if (!Vosk) return;
+    const emitter = new NativeEventEmitter(Vosk);
+    const sub = emitter.addListener('VoskPartial', (t: string) => setLivePartial(t));
     return () => sub.remove();
   }, []);
 
@@ -83,6 +84,12 @@ export default function App() {
         await LlamaServer.start(PORT, N_THREADS, N_CTX);
         setStatus('ready');
         setStatusMsg('');
+        // Warm up the on-device speech recognizer in the background.
+        try {
+          if (await Vosk.modelExists()) {
+            await Vosk.prepare();
+          }
+        } catch {}
       } catch (e: any) {
         setStatus('error');
         setStatusMsg(`Server error:\n${e?.message ?? e}`);
@@ -156,12 +163,22 @@ export default function App() {
 
   const onSpeak = useCallback(async () => {
     if (status !== 'ready' || listening || thinking) return;
+    if (isListeningRef.current) return;
     try {
       Tts?.stop();
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) return;
+
+      setLivePartial('');
       setListening(true);
-      // Opens the dictation UI; resolves with the transcript as soon as you stop talking.
-      const text: string = await Speech.listen('Ask me anything');
+      isListeningRef.current = true;
+      // Resolves the instant you stop talking (Vosk silence endpointing).
+      const text: string = await Vosk.listen();
       setListening(false);
+      isListeningRef.current = false;
+      setLivePartial('');
       if (!text?.trim()) return;
 
       const next = [...messages, {role: 'user' as const, content: text.trim()}];
@@ -171,9 +188,18 @@ export default function App() {
       await streamAnswer(next);
     } catch (e) {
       setListening(false);
+      isListeningRef.current = false;
+      setLivePartial('');
       setThinking(false);
     }
   }, [status, listening, thinking, messages, streamAnswer, scrollDown]);
+
+  const onStopListening = useCallback(() => {
+    Vosk?.cancel().catch(() => {});
+    setListening(false);
+    isListeningRef.current = false;
+    setLivePartial('');
+  }, []);
 
   const onClear = useCallback(() => {
     Tts?.stop();
@@ -195,13 +221,23 @@ export default function App() {
             )}
             <Text style={styles.status}>{statusMsg}</Text>
           </View>
+        ) : listening ? (
+          <View style={styles.center}>
+            <View style={styles.listenDot}>
+              <Text style={styles.listenDotIcon}>🎤</Text>
+            </View>
+            <Text style={styles.listenLabel}>Listening…</Text>
+            <Text style={styles.listenPartial} numberOfLines={3}>
+              {livePartial || 'Ask me anything'}
+            </Text>
+          </View>
         ) : (
           <ScrollView
             ref={scrollRef}
             style={styles.chat}
             contentContainerStyle={styles.chatContent}
             onContentSizeChange={scrollDown}>
-            {messages.length === 0 && !thinking && !listening && (
+            {messages.length === 0 && !thinking && (
               <Text style={styles.hint}>Tap the mic and ask a question.</Text>
             )}
             {messages.map((m, i) => (
@@ -230,24 +266,30 @@ export default function App() {
         )}
 
         <View style={styles.controls}>
-          {messages.length > 0 && (
-            <TouchableOpacity
-              style={[styles.clearBtn, (thinking || listening) && styles.micDisabled]}
-              onPress={onClear}
-              disabled={thinking || listening}
-              activeOpacity={0.7}>
-              <Text style={styles.clearText}>✕</Text>
+          {listening ? (
+            <TouchableOpacity style={styles.stopBtn} onPress={onStopListening} activeOpacity={0.7}>
+              <Text style={styles.stopText}>Stop</Text>
             </TouchableOpacity>
+          ) : (
+            <>
+              {messages.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.clearBtn, thinking && styles.micDisabled]}
+                  onPress={onClear}
+                  disabled={thinking}
+                  activeOpacity={0.7}>
+                  <Text style={styles.clearText}>✕</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.mic, disabled && styles.micDisabled]}
+                onPress={onSpeak}
+                disabled={disabled}
+                activeOpacity={0.7}>
+                <Text style={styles.micText}>{thinking ? '…' : '🎤 Speak'}</Text>
+              </TouchableOpacity>
+            </>
           )}
-          <TouchableOpacity
-            style={[styles.mic, disabled && styles.micDisabled]}
-            onPress={onSpeak}
-            disabled={disabled}
-            activeOpacity={0.7}>
-            <Text style={styles.micText}>
-              {listening ? '● Listening' : thinking ? '…' : '🎤 Speak'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -311,6 +353,33 @@ const styles = StyleSheet.create({
   thinkingRow: {flexDirection: 'row', alignItems: 'center'},
   thinkingText: {color: C.text2, fontSize: 13, marginLeft: 8},
   caret: {color: C.accent, fontSize: 13},
+  // Live listening view.
+  listenDot: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: C.accentBtn,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  listenDotIcon: {fontSize: 24},
+  listenLabel: {color: C.accent, fontSize: 14, fontWeight: '600', letterSpacing: -0.2},
+  listenPartial: {
+    color: C.text,
+    fontSize: 14,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 10,
+    letterSpacing: -0.1,
+  },
+  stopBtn: {
+    backgroundColor: C.surface2,
+    borderRadius: 980,
+    paddingVertical: 9,
+    paddingHorizontal: 28,
+  },
+  stopText: {color: C.text, fontSize: 13, fontWeight: '600', letterSpacing: -0.2},
   // Bottom control row, centered so it stays clear of the round bezel.
   controls: {
     flexDirection: 'row',
