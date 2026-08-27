@@ -105,12 +105,6 @@ export default function App() {
         await LlamaServer.start(PORT, N_THREADS, N_CTX);
         setStatus('ready');
         setStatusMsg('');
-        // Warm up the on-device speech recognizer in the background.
-        try {
-          if (await Vosk.modelExists()) {
-            await Vosk.prepare();
-          }
-        } catch {}
       } catch (e: any) {
         setStatus('error');
         setStatusMsg(`Server error:\n${e?.message ?? e}`);

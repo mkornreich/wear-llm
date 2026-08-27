@@ -36,23 +36,25 @@ MediaPipe) is **arm64-only** and won't build for it. So instead:
    [`native/build-llama-server.sh`](native/build-llama-server.sh).
 2. On launch, a **native module** (`LlamaServerModule.kt`) execs that binary (extracted to
    the app's `nativeLibraryDir`) so it listens on `127.0.0.1:8080` **on the watch**.
-3. **Voice** is fully on-device via **[Vosk](https://alphacephei.com/vosk/)** (`VoskModule.kt`),
-   an offline Kaldi recognizer. It streams a live transcription and **auto-submits the moment
-   you stop talking** (silence endpointing) — no button. (Wear's system dictation was rejected
-   because it always requires a "send" tap, and the watch has no `RecognitionService` for the
-   in-app `SpeechRecognizer` API. On-device whisper.cpp was tried too but is ~17× too slow on
-   this 32-bit CPU.)
+3. **Voice** uses the watch's **built-in Google speech recognition** (`SpeechModule.kt`, the
+   `ACTION_RECOGNIZE_SPEECH` dictation UI) — the most accurate option, all on-device. You tap
+   ✓/send to confirm the transcript; that tap is unavoidable on Wear (Gboard's dictation is an
+   editor, not a bindable `RecognitionService` — the watch ships none, so `SpeechRecognizer`'s
+   hands-free `onEndOfSpeech` isn't available to apps). A fully **hands-free** on-device path via
+   offline **[Vosk](https://alphacephei.com/vosk/)** (`VoskModule.kt`, silence endpointing, no
+   tap) is also in the tree — swap `Speech.listen` → `Vosk.listen` in `App.tsx` if you'd trade
+   some accuracy for hands-free.
 4. The **RN UI** (`App.tsx`) sends the transcript to the local server and streams the
    answer back token-by-token over plain HTTP, then **speaks it aloud** through the watch
    speaker via the system Text-To-Speech engine (`TtsModule.kt`).
 
-**Models (both on-device, ~300 MB total):**
-- LLM — [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
-  (Q4_K_M, ~260 MB, Apache-2.0). Tiny, so expect short, simple answers and the occasional
-  mistake; throughput is ~1–4 tokens/sec depending on thermal state.
-- STT — [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models) (~40 MB, Apache-2.0),
-  real-time offline English recognition. (The larger lgraph model is more accurate but too slow
-  to keep up with real-time audio on this 32-bit CPU.)
+**LLM model (on-device):** [SmolLM2-360M-Instruct](https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF)
+(Q4_K_M, ~260 MB, Apache-2.0). Tiny, so expect short, simple answers and the occasional
+mistake; throughput is ~1–4 tokens/sec depending on thermal state.
+
+The optional hands-free Vosk path uses [vosk-model-small-en-us-0.15](https://alphacephei.com/vosk/models)
+(~40 MB, Apache-2.0) — the small model is real-time on this CPU; the larger lgraph model is more
+accurate but too slow to keep up with live audio here.
 
 ## Toolchain
 
